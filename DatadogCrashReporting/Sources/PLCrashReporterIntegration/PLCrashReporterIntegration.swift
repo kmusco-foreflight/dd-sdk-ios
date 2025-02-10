@@ -18,7 +18,7 @@ internal extension PLCrashReporterConfig {
             throw CrashReportException(description: "Cannot obtain `/Library/Caches/` url.")
         }
 
-        let directory = cache.appendingPathComponent("com.datadoghq.crash-reporting/\(version)", isDirectory: true)
+        // let directory = cache.appendingPathComponent("com.datadoghq.crash-reporting/\(version)", isDirectory: true)
 
         return PLCrashReporterConfig(
             // The choice of `.BSD` over `.mach` is well discussed here:
@@ -27,7 +27,7 @@ internal extension PLCrashReporterConfig {
             // We don't symbolicate on device. All symbolication will happen backend-side.
             symbolicationStrategy: [],
             // Set a custom path to avoid conflicts with other PLC instances
-            basePath: directory.path
+            basePath: cache.path
         )
     }
 }
