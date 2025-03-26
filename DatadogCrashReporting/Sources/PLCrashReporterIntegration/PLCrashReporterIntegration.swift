@@ -6,6 +6,7 @@
 
 import Foundation
 import DatadogInternal
+import os.log
 
 @preconcurrency import CrashReporter
 
@@ -20,12 +21,10 @@ internal extension PLCrashReporterConfig {
 
         // let directory = cache.appendingPathComponent("com.datadoghq.crash-reporting/\(version)", isDirectory: true)
         var useMach = UserDefaults.standard.bool(forKey: "USE_MACH_FOR_DD_CRASH_REPORTING")
-        
-#if DEBUG
-        useMach = false
-#endif
       
-        DD.logger.debug("Initializing PLCrashReporter with \(useMach ? "Mach" : "BSD") signal handler.")
+        if #available(iOS 14.0, *) {
+            os_log("Datadog: Initializing PLCrashReporter with %{public}@ signal handler.", useMach ? "Mach" : "BSD")
+        }
         
         return PLCrashReporterConfig(
             // The choice of `.BSD` over `.mach` is well discussed here:
