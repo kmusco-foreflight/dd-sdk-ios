@@ -19,11 +19,18 @@ internal extension PLCrashReporterConfig {
         }
 
         // let directory = cache.appendingPathComponent("com.datadoghq.crash-reporting/\(version)", isDirectory: true)
-
+        var useMach = UserDefaults.standard.bool(forKey: "USE_MACH_FOR_DD_CRASH_REPORTING")
+        
+#if DEBUG
+        useMach = false
+#endif
+      
+        DD.logger.debug("Initializing PLCrashReporter with \(useMach ? "Mach" : "BSD") signal handler.")
+        
         return PLCrashReporterConfig(
             // The choice of `.BSD` over `.mach` is well discussed here:
             // https://github.com/microsoft/PLCrashReporter/blob/7f27b272d5ff0d6650fc41317127bb2378ed6e88/Source/CrashReporter.h#L238-L363
-            signalHandlerType: .BSD,
+            signalHandlerType: useMach ? .mach : .BSD,
             // We don't symbolicate on device. All symbolication will happen backend-side.
             symbolicationStrategy: [],
             // Set a custom path to avoid conflicts with other PLC instances
