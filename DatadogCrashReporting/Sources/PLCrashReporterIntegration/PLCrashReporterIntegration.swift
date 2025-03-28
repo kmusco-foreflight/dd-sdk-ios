@@ -19,7 +19,7 @@ internal extension PLCrashReporterConfig {
             throw CrashReportException(description: "Cannot obtain `/Library/Caches/` url.")
         }
 
-        // let directory = cache.appendingPathComponent("com.datadoghq.crash-reporting/\(version)", isDirectory: true)
+        let directory = cache.appendingPathComponent("com.datadoghq.crash-reporting/\(version)", isDirectory: true)
         var useMach = UserDefaults.standard.bool(forKey: "USE_MACH_FOR_DD_CRASH_REPORTING")
       
         if #available(iOS 14.0, *) {
@@ -33,7 +33,7 @@ internal extension PLCrashReporterConfig {
             // We don't symbolicate on device. All symbolication will happen backend-side.
             symbolicationStrategy: [],
             // Set a custom path to avoid conflicts with other PLC instances
-            basePath: cache.path
+            basePath: directory.path
         )
     }
 }
