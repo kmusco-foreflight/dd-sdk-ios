@@ -19,7 +19,7 @@ import DatadogInternal
 extension RUM {
     /// RUM view event mapper.
     /// - See: `RUM.Configuration.viewEventMapper`.
-    public typealias ViewEventMapper = (RUMViewEvent) -> RUMViewEvent
+    public typealias ViewEventMapper = (RUMViewEvent) -> RUMViewEvent?
 
     /// RUM resource event mapper.
     /// - See: `RUM.Configuration.resourceEventMapper`.
