@@ -17,7 +17,8 @@ internal struct RUMViewEventsFilter {
     func filter(events: [Event]) -> [Event] {
         var seen = Set<String>()
         var skipped: [String: [Int64]] = [:]
-
+        var errorSessionIds = Set<String>()
+        
         // reversed is O(1) and no copy because it is view on the original array
         let filtered: [Event] = events.reversed().compactMap { event in
             guard let metadata = event.metadata else {
@@ -38,15 +39,40 @@ internal struct RUMViewEventsFilter {
                 skipped[viewMetadata.id]?.append(viewMetadata.documentVersion)
                 return nil
             }
-
             seen.insert(viewMetadata.id)
+            
+            // Workaround to only upload sessions with crashes and hangs
+            do {
+                let errorEvent = try decoder.decode(RUMErrorEvent.self, from: event.data)
+                if let category = errorEvent.error.category, let isCrash = errorEvent.error.isCrash {
+                    // Crashes and error logs have the `.exception` category type but only crashes have `isCrash` == `true`
+                    if !((category == .exception && !isCrash) || category == .memoryWarning) {
+                        errorSessionIds.insert(errorEvent.session.id)
+                    }
+                }
+            } catch {}
+            
             return event
         }
 
         for (id, versions) in skipped {
             DD.logger.debug("Skipping RUMViewEvent with id: \(id) and versions: \(versions.reversed().map(String.init).joined(separator: ", "))")
         }
+        
+        // Only return events associated with sessions that had a crash or hang
+        let sessionEvents = errorSessionIds.isEmpty ? [] : filtered.filter {
+            guard let session = try? decoder.decode(RUMSession.self, from: $0.data) else { return false }
+            return errorSessionIds.contains(session.session.id)
+        }
+        
+        return sessionEvents.reversed()
+    }
+}
 
-        return filtered.reversed()
+private struct RUMSession: Codable {
+    public let session: Session
+
+    public struct Session: Codable {
+        public let id: String
     }
 }
