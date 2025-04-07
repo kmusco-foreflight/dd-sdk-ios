@@ -21,6 +21,17 @@ internal struct RUMViewEventsFilter {
         
         // reversed is O(1) and no copy because it is view on the original array
         let filtered: [Event] = events.reversed().compactMap { event in
+            // Workaround to only upload sessions with crashes and hangs
+            do {
+                let errorEvent = try decoder.decode(RUMErrorEvent.self, from: event.data)
+                if let category = errorEvent.error.category, let isCrash = errorEvent.error.isCrash {
+                    // Crashes and error logs have the `.exception` category type but only crashes have `isCrash` == `true`
+                    if !((category == .exception && !isCrash) || category == .memoryWarning) {
+                        errorSessionIds.insert(errorEvent.session.id)
+                    }
+                }
+            } catch {}
+            
             guard let metadata = event.metadata else {
                 // If there is no metadata, we can't filter it.
                 return event
@@ -40,17 +51,6 @@ internal struct RUMViewEventsFilter {
                 return nil
             }
             seen.insert(viewMetadata.id)
-            
-            // Workaround to only upload sessions with crashes and hangs
-            do {
-                let errorEvent = try decoder.decode(RUMErrorEvent.self, from: event.data)
-                if let category = errorEvent.error.category, let isCrash = errorEvent.error.isCrash {
-                    // Crashes and error logs have the `.exception` category type but only crashes have `isCrash` == `true`
-                    if !((category == .exception && !isCrash) || category == .memoryWarning) {
-                        errorSessionIds.insert(errorEvent.session.id)
-                    }
-                }
-            } catch {}
             
             return event
         }
