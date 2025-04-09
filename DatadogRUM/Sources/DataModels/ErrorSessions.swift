@@ -34,16 +34,16 @@ internal struct ErrorSessions {
     /// Reads the error sessions from the file in the cache directory. If the file doesn't exist or decoding fails, returns an empty array.
     /// - Returns: Array of `ErrorSession` objects sorted in ascending order by date.
     private static func getSessions() -> [ErrorSession] {
-        if let data = UserDefaults.standard.data(forKey: "RUM_ERROR_SESSIONS") {
+        let url = Self.fileURL
+        if FileManager.default.fileExists(atPath: url.path) {
             do {
-                var sessions = try PropertyListDecoder().decode([ErrorSession].self, from: data)
-                sessions.sort { $0.date < $1.date }
+                let data = try Data(contentsOf: url)
+                let sessions = try PropertyListDecoder().decode([ErrorSession].self, from: data)
                 return sessions
             } catch {
                 DD.logger.error("Failed to decode ErrorSessions: \(error)")
             }
         }
-
         return []
     }
 
