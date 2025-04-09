@@ -6,7 +6,6 @@
 
 import Foundation
 import DatadogInternal
-import os.log
 
 @preconcurrency import CrashReporter
 
@@ -20,16 +19,11 @@ internal extension PLCrashReporterConfig {
         }
 
         let directory = cache.appendingPathComponent("com.datadoghq.crash-reporting/\(version)", isDirectory: true)
-        var useMach = UserDefaults.standard.bool(forKey: "USE_MACH_FOR_DD_CRASH_REPORTING")
-      
-        if #available(iOS 14.0, *) {
-            os_log("Datadog: Initializing PLCrashReporter with %{public}@ signal handler.", useMach ? "Mach" : "BSD")
-        }
         
         return PLCrashReporterConfig(
             // The choice of `.BSD` over `.mach` is well discussed here:
             // https://github.com/microsoft/PLCrashReporter/blob/7f27b272d5ff0d6650fc41317127bb2378ed6e88/Source/CrashReporter.h#L238-L363
-            signalHandlerType: useMach ? .mach : .BSD,
+            signalHandlerType: .BSD,
             // We don't symbolicate on device. All symbolication will happen backend-side.
             symbolicationStrategy: [],
             // Set a custom path to avoid conflicts with other PLC instances
