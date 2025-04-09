@@ -17,7 +17,9 @@ internal struct RUMViewEventsFilter {
     func filter(events: [Event]) -> [Event] {
         var seen = Set<String>()
         var skipped: [String: [Int64]] = [:]
-        var errorSessionIds = Set<String>()
+        var errorSessions = ErrorSessions()
+
+        DD.logger.debug("Filtering \(events.count) events")
         
         // reversed is O(1) and no copy because it is view on the original array
         let filtered: [Event] = events.reversed().compactMap { event in
@@ -27,7 +29,7 @@ internal struct RUMViewEventsFilter {
                 if let category = errorEvent.error.category, let isCrash = errorEvent.error.isCrash {
                     // Crashes and error logs have the `.exception` category type but only crashes have `isCrash` == `true`
                     if !((category == .exception && !isCrash) || category == .memoryWarning) {
-                        errorSessionIds.insert(errorEvent.session.id)
+                        errorSessions.add(errorEvent.session.id)
                     }
                 }
             } catch {}
@@ -58,12 +60,16 @@ internal struct RUMViewEventsFilter {
         for (id, versions) in skipped {
             DD.logger.debug("Skipping RUMViewEvent with id: \(id) and versions: \(versions.reversed().map(String.init).joined(separator: ", "))")
         }
+
+        DD.logger.debug("Events: \(filtered.count)")
         
         // Only return events associated with sessions that had a crash or hang
-        let sessionEvents = errorSessionIds.isEmpty ? [] : filtered.filter {
+        let sessionEvents = errorSessions.sessions.isEmpty ? [] : filtered.filter {
             guard let session = try? decoder.decode(RUMSession.self, from: $0.data) else { return false }
-            return errorSessionIds.contains(session.session.id)
+            return errorSessions.contains(session.session.id)
         }
+
+        DD.logger.debug("Session events to upload: \(sessionEvents.count)")
         
         return sessionEvents.reversed()
     }

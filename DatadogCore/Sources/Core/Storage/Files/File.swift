@@ -40,6 +40,11 @@ internal protocol ReadableFile {
 
     /// Deletes this file.
     func delete() throws
+    
+    /// Returns the date when the file was last modified. Returns `nil` if the file does not exist.
+    /// If the file is created and never modified, the creation date is returned.
+    /// - Returns: The date when the file was last modified.
+    func modifiedAt() throws -> Date?
 }
 
 private enum FileError: Error {

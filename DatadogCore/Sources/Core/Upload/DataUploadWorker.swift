@@ -79,7 +79,35 @@ internal class DataUploadWorker: DataUploadWorkerType {
             if let files = files, !files.isEmpty {
                 DD.logger.debug("⏳ (\(self.featureName)) Uploading batches...")
                 self.backgroundTaskCoordinator?.beginBackgroundTask()
-                self.uploadFile(from: files.reversed(), context: context)
+
+                // Use default behavior for other features
+                if featureName != "rum" {
+                    self.uploadFile(from: files.reversed(), context: context)
+                    return
+                }
+
+                // For RUM events, we only want to process files created before the current session.
+                // This is so we don't throw out events for the current session if it crashes or hangs
+                var filesToProcess = [ReadableFile]()
+                do {
+                    var processFilesBeforeDate = context.sdkInitDate
+
+                    // If the last session crashed, the crash event is added to the current session's files.
+                    // Since we ignore the current session's files, we risk accidentally throwing out the last session's events.
+                    // To avoid this we need to also ignore the last session's files
+                    if context.didCrash() {
+                        let sessionStartDates = DatadogContext.getSessionStartDates()
+                        if sessionStartDates.count > 1, let previousSessionStartDate = sessionStartDates.first {
+                            processFilesBeforeDate = previousSessionStartDate
+                        }
+                    }
+
+                    filesToProcess = try filterFiles(files: files, before: processFilesBeforeDate)
+                } catch {
+                    DD.logger.error("Unable to filter RUM files: \(error)")
+                }
+                
+                self.uploadFile(from: filesToProcess, context: context)
             } else {
                 let batchLabel = files?.isEmpty == false ? "YES" : (isSystemReady ? "NO" : "NOT CHECKED")
                 DD.logger.debug("💡 (\(self.featureName)) No upload. Batch to upload: \(batchLabel), System conditions: \(blockersForUpload.description)")
@@ -216,6 +244,27 @@ internal class DataUploadWorker: DataUploadWorkerType {
             self.readWork?.cancel()
             self.readWork = nil
         }
+    }
+
+    /// Returns all files with a modified date before `startDate`, ordered by modified date.
+    /// - Parameters:
+    ///   - files: An array of ReadableFile objects.
+    ///   - startDate: The threshold date; only files modified before this date will be returned.
+    /// - Throws: Rethrows any errors encountered when calling `modifiedAt()`.
+    /// - Returns: An array of files filtered and ordered by modification date.
+    private func filterFiles(files: [ReadableFile], before startDate: Date) throws -> [ReadableFile] {
+        var fileDateTuples: [(file: ReadableFile, modifiedDate: Date)] = []
+
+        for file in files {
+            if let modifiedDate = try file.modifiedAt(), modifiedDate < startDate {
+                fileDateTuples.append((file: file, modifiedDate: modifiedDate))
+            }
+        }
+        
+        // Sort the tuples by modified date in ascending order
+        fileDateTuples.sort { $0.modifiedDate < $1.modifiedDate }
+        
+        return fileDateTuples.map { $0.file }
     }
 }
 

@@ -169,6 +169,71 @@ public struct DatadogContext {
         self.batteryStatus = batteryStatus
         self.isLowPowerModeEnabled = isLowPowerModeEnabled
         self.baggages = baggages
+        
+        Self.saveSessionStartDate(sdkInitDate)
     }
     // swiftlint:enable function_default_parameter_at_end
+    
+    // MARK: Helpers for filtering out RUM sessions without crashes or hangs
+    
+    private static let sessionStartDatesFileURL: URL = {
+        let cachesDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        return cachesDirectory.appendingPathComponent("RUM_SESSION_START_DATES.plist")
+    }()
+    
+    /// Retrieves the saved session start dates from a file stored in the cache directory.
+    /// - Returns: An array of `Date` objects representing the session start dates, or an empty array if the file doesn't exist or if the data cannot be decoded.
+    public static func getSessionStartDates() -> [Date] {
+        let url = sessionStartDatesFileURL
+        if FileManager.default.fileExists(atPath: url.path) {
+            do {
+                let data = try Data(contentsOf: url)
+                let dates = try PropertyListDecoder().decode([Date].self, from: data)
+                return dates.sorted()
+            } catch {
+                DD.logger.error("Error reading session start dates from file: \(error)")
+            }
+        }
+        return []
+    }
+
+    /// Saves a new session start date to a file in the cache directory
+    /// - Parameter date: The new session start `Date` to be added.
+    public static func saveSessionStartDate(_ date: Date) {
+        var dates = getSessionStartDates()
+        if dates.contains(date) { return }
+        
+        dates.append(date)
+        
+        // Keep only the current and previous session starts
+        if dates.count > 2 {
+            dates.sort()
+            dates.removeFirst()
+        }
+        
+        do {
+            let data = try PropertyListEncoder().encode(dates)
+            try data.write(to: sessionStartDatesFileURL, options: .atomic)
+        } catch {
+            DD.logger.error("Error saving session start dates to file: \(error)")
+        }
+    }
+
+    /// Determines whether the application crashed during its previous launch
+    /// - Returns: `true` if the launch report indicates that the app crashed, `false` otherwise.
+    public func didCrash() -> Bool {
+        if let baggage = self.baggages["launch-report"] {
+            do {
+                let launchReport = try baggage.decode(type: AnyCodable.self)
+                if let values = launchReport.value as? [String: Any],
+                   let didCrash = values["didCrash"] as? Bool {
+                    return didCrash
+                }
+            } catch {
+                DD.logger.error("Unable to decode launch-report baggage: \(error)")
+            }
+        }
+        
+        return false
+    }
 }
