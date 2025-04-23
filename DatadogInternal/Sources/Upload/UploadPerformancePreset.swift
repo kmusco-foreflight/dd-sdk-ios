@@ -20,4 +20,6 @@ public protocol UploadPerformancePreset {
     var uploadDelayChangeRate: Double { get }
     /// Number of batches to process during one upload cycle.
     var maxBatchesPerUpload: Int { get }
+    /// Enable uploads on networks in Low Data Mode. Default is `true`.
+    var constrainedNetworkUploadsEnabled: Bool { get }
 }

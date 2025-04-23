@@ -41,6 +41,9 @@ public struct PerformancePresetOverride {
     /// Overrides the current interval is change on successful upload. Should be less or equal `1.0`.
     /// E.g: if rate is `0.1` then `delay` will be changed by `delay * 0.1`.
     public let uploadDelayChangeRate: Double?
+    
+    /// Overrides the current upload behavior when connected to a network in Low Data Mode
+    public let constrainedNetworkUploadsEnabled: Bool?
 
     /// Initializes a new `PerformancePresetOverride` instance with the provided overrides.
     ///
@@ -53,7 +56,8 @@ public struct PerformancePresetOverride {
         maxFileSize: UInt32?,
         maxObjectSize: UInt32?,
         meanFileAge: TimeInterval? = nil,
-        uploadDelay: (initial: TimeInterval, range: Range<TimeInterval>, changeRate: Double)? = nil
+        uploadDelay: (initial: TimeInterval, range: Range<TimeInterval>, changeRate: Double)? = nil,
+        constrainedNetworkUploadsEnabled: Bool? = nil
     ) {
         self.maxFileSize = maxFileSize
         self.maxObjectSize = maxObjectSize
@@ -77,6 +81,12 @@ public struct PerformancePresetOverride {
             self.minUploadDelay = nil
             self.maxUploadDelay = nil
             self.uploadDelayChangeRate = nil
+        }
+        
+        if let constrainedNetworkUploadsEnabled {
+            self.constrainedNetworkUploadsEnabled = constrainedNetworkUploadsEnabled
+        } else {
+            self.constrainedNetworkUploadsEnabled = nil
         }
     }
 }

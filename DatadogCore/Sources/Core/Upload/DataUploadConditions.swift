@@ -11,6 +11,7 @@ import DatadogInternal
 internal struct DataUploadConditions {
     enum Blocker {
         case battery(level: Int, state: BatteryStatus.State)
+        case constrainedNetworkUploadsDisabled
         case lowPowerModeOn
         case networkReachability(description: String)
     }
@@ -22,9 +23,13 @@ internal struct DataUploadConditions {
 
     /// Battery level above which data upload can be performed.
     let minBatteryLevel: Float
+    
+    /// Blocks uploads on networks with Low Data Mode enabled when set to `false`. Defaults to `true`.
+    let constrainedNetworkUploadsEnabled: Bool
 
-    init(minBatteryLevel: Float = Constants.minBatteryLevel) {
+    init(minBatteryLevel: Float = Constants.minBatteryLevel, constrainedNetworkUploadsEnabled: Bool = true) {
         self.minBatteryLevel = minBatteryLevel
+        self.constrainedNetworkUploadsEnabled = constrainedNetworkUploadsEnabled
     }
 
     func blockersForUpload(with context: DatadogContext) -> [Blocker] {
@@ -37,6 +42,10 @@ internal struct DataUploadConditions {
         let networkIsReachable = reachability == .yes || reachability == .maybe
         if !networkIsReachable {
             blockers = [.networkReachability(description: reachability.rawValue)]
+        }
+        
+        if let isConstrained = context.networkConnectionInfo?.isConstrained, isConstrained, !constrainedNetworkUploadsEnabled {
+            return [.constrainedNetworkUploadsDisabled]
         }
         #endif
 
