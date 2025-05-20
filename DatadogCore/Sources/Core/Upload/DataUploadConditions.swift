@@ -11,7 +11,7 @@ import DatadogInternal
 internal struct DataUploadConditions {
     enum Blocker {
         case battery(level: Int, state: BatteryStatus.State)
-        case constrainedNetworkUploadsDisabled
+        case lowDataModeOn
         case lowPowerModeOn
         case networkReachability(description: String)
     }
@@ -45,7 +45,7 @@ internal struct DataUploadConditions {
         }
         
         if let isConstrained = context.networkConnectionInfo?.isConstrained, isConstrained, !constrainedNetworkUploadsEnabled {
-            return [.constrainedNetworkUploadsDisabled]
+            return [.lowDataModeOn]
         }
         #endif
 

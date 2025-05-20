@@ -245,7 +245,7 @@ internal class DataUploadWorker: DataUploadWorkerType {
             blockers: blockers.map {
                 switch $0 {
                 case .battery: return "low_battery"
-                case .constrainedNetworkUploadsDisabled: return "constrained_network_uploads_disabled"
+                case .lowDataModeOn: return "ldm"
                 case .lowPowerModeOn: return "lpm"
                 case .networkReachability: return "offline"
                 }
@@ -294,8 +294,8 @@ extension DataUploadConditions.Blocker: CustomStringConvertible {
         switch self {
         case let .battery(level: level, state: state):
             return "🔋 Battery state is: \(state) (\(level)%)"
-        case .constrainedNetworkUploadsDisabled:
-            return "🛜 Network is constrained and uploads are disabled for constrained networks"
+        case .lowDataModeOn:
+            return "🛜 Network is in Low Data Mode and uploads are disabled for constrained networks"
         case .lowPowerModeOn:
             return "🔌 Low Power Mode is: enabled"
         case let .networkReachability(description: description):
