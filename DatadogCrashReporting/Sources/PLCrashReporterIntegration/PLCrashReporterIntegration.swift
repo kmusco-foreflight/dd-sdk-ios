@@ -25,11 +25,18 @@ internal extension PLCrashReporterConfig {
         }
 
         let directory = cache.appendingPathComponent("com.datadoghq.crash-reporting/\(version)", isDirectory: true)
-
+        
+        var signalHandlerType: PLCrashReporterSignalHandlerType = .BSD
+        if UserDefaults.standard.bool(forKey: "com.datadoghq.crash-reporting.use-mach-signal-handler") {
+            signalHandlerType = .mach
+        }
+        
+        DD.logger.debug("PLCrashReporter initialized with \(signalHandlerType == .BSD ? "BSD" : "mach") signal handler")
+        
         return PLCrashReporterConfig(
             // The choice of `.BSD` over `.mach` is well discussed here:
             // https://github.com/microsoft/PLCrashReporter/blob/7f27b272d5ff0d6650fc41317127bb2378ed6e88/Source/CrashReporter.h#L238-L363
-            signalHandlerType: .BSD,
+            signalHandlerType: signalHandlerType,
             // We don't symbolicate on device. All symbolication will happen backend-side.
             symbolicationStrategy: [],
             // Flag indicating if the uncaughtExceptionHandler should be initialized or not. It usually is, except in a Xamarin environment.
