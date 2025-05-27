@@ -18,6 +18,10 @@ internal class PLCrashReporterPlugin: NSObject, CrashReportingPlugin {
     override convenience init() {
         self.init { try PLCrashReporterIntegration() }
     }
+    
+    convenience init(useMachExceptions: Bool = false) {
+        self.init { try PLCrashReporterIntegration(useMachExceptions: useMachExceptions) }
+    }
 
     internal init(thirdPartyCrashReporterFactory: () throws -> ThirdPartyCrashReporter) {
         PLCrashReporterPlugin.enableOnce(using: thirdPartyCrashReporterFactory)
